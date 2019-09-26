@@ -25,7 +25,7 @@ static int isFrameBuffer(const struct dirent *dev){
   returns: a valid framebuffer structure with the bitmap field memory mapped to the framebuffer, or null on failure
   Note: function allocates a pi_framebuffer_t object on success which must be freed with a call to freeFrameBuffer()
 */
-static pi_framebuffer_t* getFrameBuffer(const char* name){
+static pi_framebuffer_t* getFBDevice(const char* name){
 	pi_framebuffer_t* result=0;
 	int fd=open(name,O_RDWR);
 	if (fd<0) return 0;
@@ -46,7 +46,7 @@ static pi_framebuffer_t* getFrameBuffer(const char* name){
   returns a pi_framebuffer_t object describing the sense hat frame buffer, or null on failure
   Note: function allocates a pi_framebuffer_t object on success which must be freed with a call to freeFrameBuffer()
 */
-pi_framebuffer_t* getFBDevice(){
+pi_framebuffer_t* getFrameBuffer(){
 	pi_framebuffer_t* result=0;
 	struct dirent **list;
 	int i,ndev;
@@ -55,7 +55,7 @@ pi_framebuffer_t* getFBDevice(){
 	for (i=0;i<ndev;i++){
 		char fname[64];
 		snprintf(fname,sizeof(fname),"/dev/%s",list[i]->d_name);
-		result=getFrameBuffer(fname);
+		result=getFBDevice(fname);
 		if (result) break;
 	}
 	for (i=0;i<ndev;i++)
@@ -81,16 +81,16 @@ void setPixel(sense_fb_bitmap_t* bitmap,int x,int y,uint16_t color){
 	bitmap->pixel[y][x]=color;
 }
 
-/*clearBitmap
-  bitmap: a bitmap object to modify
+/*clearFrameBuffer
+  fb: a sense hat frame buffer object
   color: the fill color for the bitmap
   Fills the bitmap with the color
 */
-void clearBitmap(sense_fb_bitmap_t* bitmap,uint16_t color){
+void clearFrameBuffer(pi_framebuffer_t* fb,uint16_t color){
 	int i,j;
 	for (i=0;i<8;i++)
 		for (j=0;j<8;j++)
-			bitmap->pixel[i][j]=color;
+			fb->bitmap->pixel[i][j]=color;
 }
 /*useBitmap
   device: the sense hat framebuffer device

@@ -14,10 +14,8 @@ typedef struct{
 	sense_fb_bitmap_t* bitmap;
 } pi_framebuffer_t;
 
-pi_framebuffer_t* getFBDevice();
+pi_framebuffer_t* getFrameBuffer();
 void freeFrameBuffer(pi_framebuffer_t* device);
-void clearBitmap(sense_fb_bitmap_t* bitmap,uint16_t color);
-void useBitmap(pi_framebuffer_t* device, sense_fb_bitmap_t* source);
-void setPixel(sense_fb_bitmap_t* bitmap,int x,int y,uint16_t color);
+void clearFrameBuffer(pi_framebuffer_t* bitmap,uint16_t color);
 uint16_t getColor(int red,int green,int blue);
 #endif
