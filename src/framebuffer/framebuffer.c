@@ -53,7 +53,7 @@ pi_framebuffer_t* getFrameBuffer(){
 	ndev=scandir("/dev",&list,isFrameBuffer,versionsort);
 	if(ndev<=0) return 0; /* No framebuffers found */
 	for (i=0;i<ndev;i++){
-		char fname[64];
+		char fname[512];
 		snprintf(fname,sizeof(fname),"/dev/%s",list[i]->d_name);
 		result=getFBDevice(fname);
 		if (result) break;
