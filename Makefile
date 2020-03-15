@@ -2,14 +2,15 @@ INCLUDES := ./include
 CFLAGS := 
 SRC := src
 SRCNC := srcnc
-VPATH := $(SRC)/obj:include
-OBJDIR := $(SRC)/obj
+VPATH := $(SRC)/obj:$(SRCNC)/obj:include
+OBJDIR := $(SRC)/obj:$(SRCNC)/obj
 
 all: library
 library: lib/libsense.a lib/libsensenc.a
 
 $(SRC)/obj/%.o: $(SRC)/*/%.c %.h | $(SRC)/obj
 	cc $(CFLAGS) -c -o $@ $< -I$(INCLUDES)
+
 $(SRCNC)/obj/%.o: $(SRCNC)/*/%.c %.h | $(SRCNC)/obj
 	cc $(CFLAGS) -c -o $@ $< -I$(INCLUDES)
 
@@ -28,7 +29,7 @@ install: lib/libsense.a lib/libsensenc.a | ~/lib ~/include
 	cp include/*.h ~/include
 
 # Rule to create directories as needed
-~/include ~/lib ncsrc/obj src/obj lib :
+~/include ~/lib $(SRCNC)/obj $(SRC)/obj lib :
 	mkdir -p $@
 
 uninstall:
