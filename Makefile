@@ -1,27 +1,34 @@
 INCLUDES := ./include
 CFLAGS := 
-VPATH := src/obj:include
-OBJDIR := src/obj
+SRC := src
+SRCNC := srcnc
+VPATH := $(SRC)/obj:include
+OBJDIR := $(SRC)/obj
 
 all: library
-library: lib/libsense.a 
+library: lib/libsense.a lib/libsensenc.a
 
-src/obj/%.o: src/*/%.c %.h | src/obj
+$(SRC)/obj/%.o: $(SRC)/*/%.c %.h | $(SRC)/obj
+	cc $(CFLAGS) -c -o $@ $< -I$(INCLUDES)
+$(SRCNC)/obj/%.o: $(SRCNC)/*/%.c %.h | $(SRCNC)/obj
 	cc $(CFLAGS) -c -o $@ $< -I$(INCLUDES)
 
-lib/libsense.a: src/obj/framebuffer.o src/obj/i2c.o src/obj/humidity_temp.o src/obj/pressure.o src/obj/joystick.o src/obj/gyro.o src/obj/mag.o src/obj/font.o | lib
-	ar rcs $@ src/obj/*.o
+
+lib/libsense.a: $(SRC)/obj/framebuffer.o $(SRC)/obj/i2c.o $(SRC)/obj/humidity_temp.o $(SRC)/obj/pressure.o $(SRC)/obj/joystick.o $(SRC)/obj/gyro.o $(SRC)/obj/mag.o $(SRC)/obj/font.o | lib
+	ar rcs $@ $(SRC)/obj/*.o
+lib/libsensenc.a: $(SRCNC)/obj/framebuffer.o $(SRCNC)/obj/i2c.o $(SRCNC)/obj/humidity_temp.o $(SRCNC)/obj/pressure.o $(SRCNC)/obj/joystick.o $(SRCNC)/obj/gyro.o $(SRCNC)/obj/mag.o $(SRCNC)/obj/font.o | lib
+	ar rcs $@ $(SRCNC)/obj/*.o
 
 clean: lib-clean 
 lib-clean: 
-	rm -rf src/obj lib
+	rm -rf src/obj ncsrc/obj lib
 
-install: lib/libsense.a | ~/lib ~/include
-	cp lib/libsense.a ~/lib
+install: lib/libsense.a lib/libsensenc.a | ~/lib ~/include
+	cp lib/libsense.a lib/libsensenc.a ~/lib
 	cp include/*.h ~/include
 
 # Rule to create directories as needed
-~/include ~/lib src/obj lib :
+~/include ~/lib ncsrc/obj src/obj lib :
 	mkdir -p $@
 
 uninstall:
