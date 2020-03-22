@@ -12,14 +12,52 @@
 #include <sys/types.h>
 
 static pi_framebuffer_t cscreen;
+static pi_framebuffer_t* result=NULL;
+static pi_framebuffer_t* allocated=NULL;
 static sense_fb_bitmap_t *cbitmap;
 static sense_fb_bitmap_t obitmap;
 static int volatile marker=0;
-static pid_t volatile child=0;
+static pid_t volatile child=1;
 
 void handle_sigchld(int sig) {
-  while (waitpid((pid_t)(-1), 0, WNOHANG) > 0) {}
-  child=0;
+    int status;
+    while (waitpid((pid_t)(-1), &status, WNOHANG) > 0) {
+        if(WIFSIGNALED(status) && WTERMSIG(status)==SIGSEGV)
+            kill(0,SIGSEGV);
+    }
+    child=0;
+}
+
+/* tries to find the closest color in the existing terminal set
+ * to the one we're trying to show on the hat. Doesn't even
+ * pretend to use color theory */
+
+/* L2 distance of 16-bit colors */
+int colorDistance(short term, uint16_t hat) {
+    short tr,tg,tb;
+    /* green got an extra bit that we want to ignore, I think */
+    /* color_content is scaled to 1000 for some reason */
+    unsigned short hr=1000*((hat&65535)>>11)/32,
+                   hg=1000*((hat&2047)>>6)/32,
+                   hb=1000*(hat&31)/32;
+    color_content(term,&tr,&tg,&tb);
+    int dist= (tr-hr)*(tr-hr)+(tg-hg)*(tg-hg)+(tb-hb)*(tb-hb);
+    //fprintf(stderr,"(%d,%d,%d)-(%d,%d,%d)=%d\n",hr,hg,hb,tr,tg,tb,dist);
+    return dist;
+}
+int closestColor(uint16_t hatColor) {
+    int cc=0, dmin=colorDistance(0,hatColor);
+
+    //fprintf(stderr,"%d %d\n",0,dmin);
+    for(int c=1; c<8; c++) {
+        int dc=colorDistance(c,hatColor);
+        //fprintf(stderr,"%d %d\n",c,dc);
+        if(dc<dmin) {
+            cc=c;
+            dmin=dc;
+        }
+    }
+    return cc;
 }
 
 void drawCFB(void) {
@@ -41,7 +79,11 @@ void drawCFB(void) {
             addch('|');
             obitmap.pixel[7-x][y]=cbitmap->pixel[7-x][y];
             if(cbitmap->pixel[7-x][y]) {
+                int color=closestColor(cbitmap->pixel[7-x][y]);
+                attron(COLOR_PAIR(color));
                 addch('#');
+                //addch('0'+(char)color);
+                attroff(COLOR_PAIR(color));
             }else{
                 addch(' ');
             }
@@ -58,13 +100,24 @@ void drawCFB(void) {
   Note: function allocates a pi_framebuffer_t object on success which must be freed with a call to freeFrameBuffer()
 */
 pi_framebuffer_t* getFrameBuffer(){
-	pi_framebuffer_t* result=0;
+    if(result)
+    {
+        allocated=result;
+        if(mprotect(result->bitmap,
+                sizeof(sense_fb_bitmap_t),
+                PROT_READ|PROT_WRITE)
+          ) fprintf(stderr,"failed to mprotect unlock\n");
+        return result;
+    }
 	int i,ndev;
     cbitmap=mmap(NULL, sizeof(sense_fb_bitmap_t),
             PROT_READ | PROT_WRITE,
             MAP_SHARED | MAP_ANONYMOUS,
             -1, 0);
     initscr();
+    start_color();
+    for(int i=1; i<8; i++)
+        init_pair(i,i,i);
     noecho();
     cbreak();
     keypad(stdscr,TRUE);
@@ -76,6 +129,7 @@ pi_framebuffer_t* getFrameBuffer(){
             obitmap.pixel[i][j]=1;
         }
     }
+    allocated=result;
 
     child=fork();
     if(!child) {
@@ -100,7 +154,6 @@ pi_framebuffer_t* getFrameBuffer(){
         drawCFB();
         select(0,NULL,NULL,NULL,&tv);
     }
-    //printf("Marker got to: %d\n",marker);
     tv.tv_sec=1;
     select(0,NULL,NULL,NULL,&tv);
     echo();
@@ -110,9 +163,20 @@ pi_framebuffer_t* getFrameBuffer(){
 }
 
 /*freeFrameBuffer
-  Essentially a no-op in this case
+  Blocks the shared memory from writes (to simulate actually freeing)
+  and inserts a pause so the last-drawn image can be seen).
 */
 void freeFrameBuffer(pi_framebuffer_t* device){
+    if(!allocated) {
+        // Double free.
+        raise(SIGSEGV);
+        return;
+    }
+    allocated=NULL;
+    mprotect(result->bitmap,
+             sizeof(sense_fb_bitmap_t),
+             PROT_NONE);
+    //result->bitmap->pixel[0][0]=1;
     struct timeval tv;
     tv.tv_sec=0;
     tv.tv_usec=200000;
