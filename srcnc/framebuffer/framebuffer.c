@@ -18,6 +18,7 @@ static sense_fb_bitmap_t *cbitmap;
 static sense_fb_bitmap_t obitmap;
 static int volatile marker=0;
 static pid_t volatile child=1;
+static int fbcount=0;
 
 void handle_sigchld(int sig) {
     int status;
@@ -91,6 +92,7 @@ void drawCFB(void) {
         addch('|');
     }
     mvprintw(16,0,"+-+-+-+-+-+-+-+-+");
+    mvprintw(17,0," USB PORTS HERE");
     //mvprintw(17,0,"%d\t%lu",marker++,child);
     refresh();
 }
@@ -100,9 +102,10 @@ void drawCFB(void) {
   Note: function allocates a pi_framebuffer_t object on success which must be freed with a call to freeFrameBuffer()
 */
 pi_framebuffer_t* getFrameBuffer(){
-    if(result)
+    fprintf(stderr,"getFB: fbcount: %d\n",fbcount);
+    fbcount++;
+    if(allocated)
     {
-        allocated=result;
         if(mprotect(result->bitmap,
                 sizeof(sense_fb_bitmap_t),
                 PROT_READ|PROT_WRITE)
@@ -167,11 +170,16 @@ pi_framebuffer_t* getFrameBuffer(){
   and inserts a pause so the last-drawn image can be seen).
 */
 void freeFrameBuffer(pi_framebuffer_t* device){
-    if(!allocated) {
+
+    fprintf(stderr,"free; fbcount: %d\n",fbcount);
+    if(!fbcount) {
         // Double free.
         raise(SIGSEGV);
         return;
     }
+    fbcount--;
+    if(fbcount) return;
+
     allocated=NULL;
     mprotect(result->bitmap,
              sizeof(sense_fb_bitmap_t),
