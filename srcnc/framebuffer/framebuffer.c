@@ -102,7 +102,7 @@ void drawCFB(void) {
   Note: function allocates a pi_framebuffer_t object on success which must be freed with a call to freeFrameBuffer()
 */
 pi_framebuffer_t* getFrameBuffer(){
-    fprintf(stderr,"getFB: fbcount: %d\n",fbcount);
+    //fprintf(stderr,"getFB: fbcount: %d\n",fbcount);
     fbcount++;
     if(allocated)
     {
@@ -171,7 +171,7 @@ pi_framebuffer_t* getFrameBuffer(){
 */
 void freeFrameBuffer(pi_framebuffer_t* device){
 
-    fprintf(stderr,"free; fbcount: %d\n",fbcount);
+    //fprintf(stderr,"free; fbcount: %d\n",fbcount);
     if(!fbcount) {
         // Double free.
         raise(SIGSEGV);
