@@ -6,6 +6,8 @@
 #include <string.h>
 #include "framebuffer.h"
 #include <ncurses.h>
+#include <stdarg.h>
+#include <fcntl.h>
 #include <sys/time.h>
 #include <sys/mman.h>
 #include <sys/wait.h>
@@ -19,6 +21,10 @@ static sense_fb_bitmap_t obitmap;
 static int volatile marker=0;
 static pid_t volatile child=1;
 static int fbcount=0;
+int joystickFD[2]={-1,-1};
+int *getJSFD(void) {
+    return joystickFD;
+}
 
 void handle_sigchld(int sig) {
     int status;
@@ -93,6 +99,7 @@ void drawCFB(void) {
     }
     mvprintw(16,0,"+-+-+-+-+-+-+-+-+");
     mvprintw(17,0," USB PORTS HERE");
+    mvprintw(18,0,"");
     //mvprintw(17,0,"%d\t%lu",marker++,child);
     refresh();
 }
@@ -117,6 +124,7 @@ pi_framebuffer_t* getFrameBuffer(){
             PROT_READ | PROT_WRITE,
             MAP_SHARED | MAP_ANONYMOUS,
             -1, 0);
+    pipe2(joystickFD,O_NONBLOCK);
     initscr();
     start_color();
     for(int i=1; i<8; i++)
@@ -124,6 +132,7 @@ pi_framebuffer_t* getFrameBuffer(){
     noecho();
     cbreak();
     keypad(stdscr,TRUE);
+    nodelay(stdscr,TRUE);
 	result=&cscreen;
     result->bitmap=cbitmap;
     for(int i=0; i<8; i++) {
@@ -154,6 +163,31 @@ pi_framebuffer_t* getFrameBuffer(){
     tv.tv_sec=0;
     tv.tv_usec=100000;
     while(child){
+        int c;
+        while((c=getch())!=ERR) {
+            switch(c) {
+                // input_event_codes.h and ncurses.h differ in their codes
+                // Also, want to match (arbitrary) pi orientation
+                case KEY_UP:
+                    c=105; // RIGHT 105
+                    break;
+                case KEY_DOWN:
+                    c=106; // LEFT 106
+                    break;
+                case KEY_LEFT:
+                    c=108; // DOWN 108
+                    break;
+                case KEY_RIGHT:
+                    c=103; // UP 103
+                    break;
+                case KEY_ENTER:
+                case '\n':
+                case '\r':
+                    c=28;
+                    break;
+            }
+            write(joystickFD[1],&c,sizeof(c));
+        }
         drawCFB();
         select(0,NULL,NULL,NULL,&tv);
     }
