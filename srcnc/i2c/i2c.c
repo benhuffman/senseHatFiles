@@ -31,7 +31,7 @@ pi_i2c_t* geti2cDevice(){
     ndev=scandir("/dev",&list,isi2cDevice,versionsort);
     if(ndev<=0) return 0;
     for (i=0;i<ndev;i++){
-        char fname[64];
+        char fname[300];
         snprintf(fname,sizeof(fname),"/dev/%s",list[i]->d_name);
         int fd=open(fname,O_RDWR);
         if (fd>=0){
