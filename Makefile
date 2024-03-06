@@ -2,14 +2,14 @@ INCLUDES := ./include
 CFLAGS := 
 VPATH = $(SRC)/obj:include
 OBJDIR = $(SRC)/obj
-FB != ls /dev/fb* | wc -w
-ifndef SRC
-ifeq "$(FB)" "1"
-SRC := srcnc
-else
+#FB != ls /dev/fb* | wc -w
+#ifndef SRC
+#ifeq "$(FB)" "1"
+#SRC := srcnc
+#else
 SRC := src
-endif
-endif
+#endif
+#endif
 
 all: library
 library: lib/libsense.a
